@@ -4,9 +4,8 @@
 
 Adafruit_BMP280 bmp;
 
-// -------------------------------------------------------
 // Kalman filter tự viết
-// -------------------------------------------------------
+
 float kf_q = 0.1;
 float kf_r = 0.5;
 float kf_x = 0.0;
@@ -19,7 +18,6 @@ float kalman_update(float z) {
   kf_p = (1.0 - k) * kf_p;
   return kf_x;
 }
-// -------------------------------------------------------
 
 const int N_SAMPLES = 20;       // lay 20 mau theo yeu cau bai
 const float P0      = 1013.25;  // ICAO
@@ -70,7 +68,6 @@ void doMeasurement() {
                   ? (abs(e_h_m) / abs(h_ref)) * 100.0
                   : 0.0;                        // %
 
-  // In kết quả theo định dạng bảng
   Serial.println("--------------------------------------------");
   Serial.print  ("h_ref    : "); Serial.print(h_ref,    2); Serial.println(" m");
   Serial.print  ("P trung binh: "); Serial.print(p_mean,  2); Serial.println(" hPa");
