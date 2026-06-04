@@ -1,82 +1,61 @@
 import pandas as pd
 import numpy as np
 
-def calculate_settle_time(
-    file_path,
-    sheet_name,
-    column_name,
-    abs_tolerance=0.1,   # SỬ DỤNG SAI SỐ TUYỆT ĐỐI (VD: 0.1 mét = 10 cm)
-    stable_samples=20,
-    verbose=True
-):
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
-    df.columns = df.columns.str.strip()
+file_path = "thong_so_EMA.xlsx"  # Đặt file .xlsx cùng thư mục với script này
 
-    # Ép cột thời gian về số
-    df['Time_ms'] = pd.to_numeric(df['Time_ms'], errors='coerce')
-    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+xl = pd.ExcelFile(file_path)
 
-    # Xóa NaN
-    df = df.dropna(subset=['Time_ms', column_name])
+print(f"{'Sheet':<15} {'Alpha':>8} {'Delta_t (ms)':>14} {'T_stella (ms)':>15}")
+print("-" * 55)
 
-    t = df['Time_ms'].to_numpy()
-    y = df[column_name].to_numpy()
+results = []
 
-    # Giá trị đầu và cuối
-    y_init = np.mean(y[:min(50, len(y))])
-    y_final = np.mean(y[-min(50, len(y)):])
+for sheet in xl.sheet_names:
+    df = pd.read_excel(file_path, sheet_name=sheet)
 
-    delta = abs(y_final - y_init)
-    
-    # THAY ĐỔI Ở ĐÂY: Dùng band cố định thay vì dựa vào delta
-    band = abs_tolerance 
+    # Lấy alpha từ tên sheet (vd: Alpha_0.3 -> 0.3)
+    alpha = float(sheet.split("_")[1])
 
-    lower = y_final - band
-    upper = y_final + band
+    # Tính delta_t từ cột Time_ms
+    delta_t = df["Time_ms"].diff().dropna().median()
 
-    if verbose:
-        print(f"\n--- {sheet_name} / {column_name} ---")
-        print(f"  y_init (avg first 50): {y_init:.4f}")
-        print(f"  y_final (avg last 50): {y_final:.4f}")
-        print(f"  delta = {delta:.4f}")
-        print(f"  band (absolute ±) = {band:.4f}")
-        print(f"  stable band: [{lower:.4f}, {upper:.4f}]")
+    # Tính T_stella
+    T_stella = delta_t / alpha
 
-    inside = (y >= lower) & (y <= upper)
+    print(f"{sheet:<15} {alpha:>8.1f} {delta_t:>14.2f} {T_stella:>15.4f}")
+    results.append({"Sheet": sheet, "Alpha": alpha, "Delta_t_ms": delta_t, "T_stella_ms": T_stella})
 
-    count = 0
-    for i in range(len(inside)):
-        if inside[i]:
-            count += 1
-        else:
-            count = 0
+# Lưu kết quả ra Excel
+result_df = pd.DataFrame(results)
+result_df.to_excel("T_stella_results.xlsx", index=False)
+print("\nDa luu ket qua vao file: T_stella_results.xlsx")
 
-        if count >= stable_samples:
-            settle_idx = i - stable_samples + 1
-            settle_time = t[settle_idx]
-            if verbose:
-                print(f"  -> Settle time found at t = {settle_time:.2f} ms (index {settle_idx})")
-            return settle_time
+df = pd.read_excel(file_path, sheet_name="Alpha_0.3")
 
-    if verbose:
-        print(f"  WARNING: Never reached {stable_samples} stable consecutive samples within band.")
-        print(f"  Returning last time = {t[-1]:.2f} ms")
-    return t[-1]
+time = df["Time_ms"].values
+raw = df["Raw_Altitude"].values
 
-file_path = "thong_so_EMA.xlsx"
+# 1. Xác định giá trị cuối cùng (trung bình 10 mẫu cuối)
+final_value = np.mean(raw[-10:])
+print(f"Giá trị cuối cùng: {final_value:.3f}")
 
-# Alpha 0.1
-tsettle_01 = calculate_settle_time(file_path, "Alpha_0.1", "EMA_Altitude")
-print(f"Tsettle Alpha 0.1: {tsettle_01:.2f} ms")
+# 2. Băng thông ±2%
+upper_band = final_value * 1.02
+lower_band = final_value * 0.98
+print(f"Băng trên: {upper_band:.3f}, Băng dưới: {lower_band:.3f}")
 
-# Alpha 0.3
-tsettle_03 = calculate_settle_time(file_path, "Alpha_0.3", "EMA_Altitude")
-print(f"Tsettle Alpha 0.3: {tsettle_03:.2f} ms")
+# 3. Tìm T_settle: thời điểm cuối cùng tín hiệu ra ngoài băng
+t_settle = 0
+inside_band = True
 
-# Alpha 0.7
-tsettle_07 = calculate_settle_time(file_path, "Alpha_0.7", "EMA_Altitude")
-print(f"Tsettle Alpha 0.7: {tsettle_07:.2f} ms")
+for i in range(len(raw)):
+    if raw[i] < lower_band or raw[i] > upper_band:
+        inside_band = False
+        t_settle = time[i]  # lấy thời điểm cuối cùng nằm ngoài
+    else:
+        if not inside_band:
+            # Lần đầu vào băng
+            t_settle = time[i]
+            inside_band = True
 
-# Raw (lấy từ Alpha_0.3 sheet)
-tsettle_raw = calculate_settle_time(file_path, "Alpha_0.3", "Raw_Altitude")
-print(f"Tsettle Raw: {tsettle_raw:.2f} ms")
+print(f"T_settle = {t_settle} ms")
