@@ -32,14 +32,11 @@ print("\nDa luu ket qua vao: SNR_results.xlsx")
 import pandas as pd
 import numpy as np
 
-# ============================================================
-# CẤU HÌNH - chỉnh sửa ở đây
-# ============================================================
 FILE_PATH   = "thong_so_EMA.xlsx"   # Đặt file cùng thư mục script
-SHEET_NAME  = 0                      # 0 = sheet đầu tiên, hoặc ghi tên sheet
-COL_TIME    = "Time_ms"              # Tên cột thời gian
-COL_RAW     = "Raw_Altitude"         # Tên cột dữ liệu thô
-ALPHA_LIST  = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]  # Danh sách alpha cần thử
+SHEET_NAME  = 0                      
+COL_TIME    = "Time_ms"             
+COL_RAW     = "Raw_Altitude"         
+ALPHA_LIST  = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]  
 OUTPUT_FILE = "EMA_T_stella_compare.xlsx"
 # ============================================================
 
@@ -78,15 +75,12 @@ for alpha in ALPHA_LIST:
     })
     ema_columns[f"EMA_alpha_{alpha}"] = ema.values
 
-# Tạo sheet tổng hợp
 summary_df = pd.DataFrame(results)
 
-# Tạo sheet dữ liệu chi tiết (Raw + tất cả EMA)
 detail_df = df[[COL_TIME, COL_RAW]].copy()
 for col_name, values in ema_columns.items():
     detail_df[col_name] = values
 
-# Xuất ra Excel
 with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as writer:
     summary_df.to_excel(writer, sheet_name="So_sanh_T_stella", index=False)
     detail_df.to_excel(writer, sheet_name="Chi_tiet_EMA", index=False)

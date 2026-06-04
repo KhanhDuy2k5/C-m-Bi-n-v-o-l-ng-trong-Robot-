@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-file_path = "thong_so_EMA.xlsx"  # Đặt file .xlsx cùng thư mục với script này
+file_path = "thong_so_EMA.xlsx"  
 
 xl = pd.ExcelFile(file_path)
 
@@ -25,7 +25,6 @@ for sheet in xl.sheet_names:
     print(f"{sheet:<15} {alpha:>8.1f} {delta_t:>14.2f} {T_stella:>15.4f}")
     results.append({"Sheet": sheet, "Alpha": alpha, "Delta_t_ms": delta_t, "T_stella_ms": T_stella})
 
-# Lưu kết quả ra Excel
 result_df = pd.DataFrame(results)
 result_df.to_excel("T_stella_results.xlsx", index=False)
 print("\nDa luu ket qua vao file: T_stella_results.xlsx")
